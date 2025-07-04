@@ -36,26 +36,28 @@ export default function ProfileModal({ isOpen, onClose, profile }: ProfileModalP
   const uploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
       setUploading(true)
-
+  
       if (!event.target.files || event.target.files.length === 0) {
-        throw new Error("You must select an image to upload.")
+        throw new Error("Debes seleccionar una imagen para subir.")
       }
-
+  
       const file = event.target.files[0]
       const fileExt = file.name.split(".").pop()
-      const filePath = `${profile?.id}-${Math.random()}.${fileExt}`
-
-      const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, file)
-
-      if (uploadError) {
-        throw uploadError
-      }
-
+      const filePath = `avatars/${profile?.id}/avatar.${fileExt}` // nombre fijo por usuario
+  
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, {
+          upsert: true, // ✅ permite sobrescribir
+        })
+  
+      if (uploadError) throw uploadError
+  
       const { data } = supabase.storage.from("avatars").getPublicUrl(filePath)
-
+  
       setAvatarUrl(data.publicUrl)
     } catch (error) {
-      console.error("Error uploading avatar:", error)
+      console.error("Error subiendo avatar:", error)
     } finally {
       setUploading(false)
     }
@@ -101,28 +103,30 @@ export default function ProfileModal({ isOpen, onClose, profile }: ProfileModalP
                 {username?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <input
-                type="file"
-                id="avatar-upload"
-                accept="image/*"
-                onChange={uploadAvatar}
-                disabled={uploading}
-                className="hidden"
-              />
-              <Label htmlFor="avatar-upload" className="cursor-pointer">
-                <Button 
-                  variant="outline" 
-                  disabled={uploading} 
-                  className="bg-gray-800 text-green-400 border-green-600 hover:bg-gray-700 hover:text-green-300"
-                >
-                  <Upload className="h-4 w-4 mr-2 text-green-400" />
-                  {uploading ? "Subiendo..." : "Subir Avatar"}
-                </Button>
-              </Label>
-            </div>
+  
+            <input
+              type="file"
+              id="avatar-upload"
+              accept="image/*"
+              onChange={uploadAvatar}
+              disabled={uploading}
+              className="hidden"
+            />
+            <Label htmlFor="avatar-upload" className="cursor-pointer">
+              <Button 
+                variant="outline" 
+                disabled={uploading} 
+                className="bg-gray-800 text-green-400 border-green-600 hover:bg-gray-700 hover:text-green-300"
+              >
+                <Upload className="h-4 w-4 mr-2 text-green-400" />
+                {uploading
+                  ? "Subiendo..."
+                  : avatarUrl
+                    ? "Editar Avatar"
+                    : "Subir Avatar"}
+              </Button>
+            </Label>
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="fullName" className="text-green-300">Nombre Completo</Label>
             <Input 

@@ -139,7 +139,9 @@ export default function DirectMessageList({ otherUser, currentUserId }: DirectMe
 
   const subscribeToMessages = () => {
     if (!conversationId) return () => {}
-
+  
+    const audio = new Audio("/notification.mp3") // Ruta al sonido
+  
     const channel = supabase
       .channel(`direct_messages:${conversationId}`)
       .on(
@@ -152,11 +154,17 @@ export default function DirectMessageList({ otherUser, currentUserId }: DirectMe
         },
         (payload) => {
           const newMessage = payload.new as DirectMessage
+  
+          // Solo reproducir si el mensaje NO es del usuario actual
+          if (newMessage.sender_id !== currentUserId) {
+            audio.play().catch((err) => console.error("Error playing sound:", err))
+          }
+  
           setMessages((prev) => [...prev, newMessage])
         },
       )
       .subscribe()
-
+  
     return () => {
       supabase.removeChannel(channel)
     }

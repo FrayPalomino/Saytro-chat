@@ -45,7 +45,7 @@ export default function UserList({ onUserSelect, selectedUserId, currentUserId }
           user1_id,
           user2_id,
           last_message_at,
-          direct_messages!inner (
+          direct_messages (
             content,
             created_at,
             sender_id
@@ -79,17 +79,34 @@ export default function UserList({ onUserSelect, selectedUserId, currentUserId }
       for (const conv of conversationsData || []) {
         const otherUserId = conv.user1_id === currentUserId ? conv.user2_id : conv.user1_id
         const otherUser = usersData?.find((u) => u.id === otherUserId)
-
+      
         if (otherUser) {
           usersWithConversations.add(otherUserId)
-
-          const lastMessage = conv.direct_messages?.[0]
-
+      
+          // Obtener último mensaje
+          const lastMessage = conv.direct_messages?.sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )?.[0]
+      
+          // Obtener cantidad de mensajes no leídos (de ese usuario hacia mí)
+          const { data: unreadMessages, error: unreadError } = await supabase
+            .from("direct_messages")
+            .select("id", { count: "exact", head: true }) // solo cuenta
+            .eq("conversation_id", conv.id)
+            .eq("sender_id", otherUserId)
+            .is("read_at", null)
+      
+          if (unreadError) {
+            console.error("Error fetching unread count:", unreadError)
+          }
+      
           conversationInfos.push({
             user: otherUser,
-            lastMessage: lastMessage?.content || "No messages yet",
+            lastMessage: lastMessage
+              ? (lastMessage.sender_id === currentUserId ? `Tú: ${lastMessage.content}` : lastMessage.content)
+              : "No messages yet",
             lastMessageTime: lastMessage?.created_at,
-            unreadCount: 0,
+            unreadCount: unreadMessages?.length || 0,
           })
         }
       }
